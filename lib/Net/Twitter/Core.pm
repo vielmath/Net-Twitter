@@ -130,12 +130,12 @@ sub credentials {
 
 sub _encode_args {
     my ($self, $args) = @_;
-
     # Values need to be utf-8 encoded.  Because of a perl bug, exposed when
     # client code does "use utf8", keys must also be encoded.
     # see: http://www.perlmonks.org/?node_id=668987
     # and: http://perl5.git.perl.org/perl.git/commit/eaf7a4d2
-    return { map { utf8::upgrade($_) unless ref($_); $_ } %$args };
+    $args = { map { $_ => uri_escape($args->{$_}) } keys %$args };
+    return map { utf8::upgrade($_) unless ref($_); $_ } %$args;
 }
 
 sub _json_request { 
@@ -144,7 +144,7 @@ sub _json_request {
     my $msg = $self->_prepare_request($http_method, $uri, $args, $authenticate);
 
     my $res = $self->_send_request($msg);
-if(!$res || !$res->is_success) { use YAML; die "REQUEST=",Dump $msg,"\nRETURN=",Dump $res; }
+    #if(!$res || !$res->is_success) { use YAML; warn "REQUEST=",Dump $msg,"\nRETURN=",Dump $res; }
     return $self->_parse_result($res, $args, $dt_parser);
 }
 
@@ -154,8 +154,7 @@ sub _prepare_request {
     my $msg;
 
     my %natural_args = $self->_natural_args($args);
-
-    $self->_encode_args(\%natural_args);
+    %natural_args = $self->_encode_args(\%natural_args);
 
     if ( $http_method =~ /^(?:GET|DELETE)$/ ) {
         $uri->query_form(%natural_args);
