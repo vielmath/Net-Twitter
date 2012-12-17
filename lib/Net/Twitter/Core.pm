@@ -142,8 +142,9 @@ sub _json_request {
     my ($self, $http_method, $uri, $args, $authenticate, $dt_parser) = @_;
     
     my $msg = $self->_prepare_request($http_method, $uri, $args, $authenticate);
-    my $res = $self->_send_request($msg);
 
+    my $res = $self->_send_request($msg);
+if(!$res || !$res->is_success) { use YAML; die "REQUEST=",Dump $msg,"\nRETURN=",Dump $res; }
     return $self->_parse_result($res, $args, $dt_parser);
 }
 
