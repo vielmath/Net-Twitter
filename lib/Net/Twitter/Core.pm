@@ -134,7 +134,6 @@ sub _encode_args {
     # client code does "use utf8", keys must also be encoded.
     # see: http://www.perlmonks.org/?node_id=668987
     # and: http://perl5.git.perl.org/perl.git/commit/eaf7a4d2
-    $args = { map { $_ => uri_escape($args->{$_}) } keys %$args };
     return map { utf8::upgrade($_) unless ref($_); $_ } %$args;
 }
 
@@ -154,6 +153,8 @@ sub _prepare_request {
     my $msg;
 
     my %natural_args = $self->_natural_args($args);
+    %natural_args = map { $_ => uri_escape($args->{$_}) } keys %natural_args
+        if $http_method eq 'GET';
     %natural_args = $self->_encode_args(\%natural_args);
 
     if ( $http_method =~ /^(?:GET|DELETE)$/ ) {
