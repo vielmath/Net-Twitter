@@ -83,9 +83,10 @@ Not all Tweets will be indexed or made available via the search interface.
 
     path      => 'search/tweets',
     method    => 'GET',
-    params   => [qw/q geocode lang locale result_type count until since_id max_id include_entities callback/],
-    required => [qw/q/],
-    returns  => 'HashRef',
+    uriencode => 1,
+    params    => [qw/q geocode lang locale result_type count until since_id max_id include_entities callback/],
+    required  => [qw/q/],
+    returns   => 'HashRef',
 );
 
 # twitter_api_method public_timeline => (

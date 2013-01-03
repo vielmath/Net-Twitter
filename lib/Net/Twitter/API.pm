@@ -37,6 +37,8 @@ sub twitter_api_method {
     my ($arg_names, $path) = @options{qw/required path/};
     $arg_names = $options{params} if @$arg_names == 0 && @{$options{params}} == 1;
 
+    my $uriencode = delete $options{uriencode};
+
     my $code = sub {
         my $self = shift;
 
@@ -90,6 +92,7 @@ sub twitter_api_method {
             $args,
             $authenticate,
             $options{datetime_parser},
+            $uriencode,
         );
     };
 

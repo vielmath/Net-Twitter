@@ -138,23 +138,21 @@ sub _encode_args {
 }
 
 sub _json_request { 
-    my ($self, $http_method, $uri, $args, $authenticate, $dt_parser) = @_;
+    my ($self, $http_method, $uri, $args, $authenticate, $dt_parser, $uriencode) = @_;
     
-    my $msg = $self->_prepare_request($http_method, $uri, $args, $authenticate);
-
+    my $msg = $self->_prepare_request($http_method, $uri, $args, $authenticate, $uriencode);
     my $res = $self->_send_request($msg);
     #if(!$res || !$res->is_success) { use YAML; warn "REQUEST=",Dump $msg,"\nRETURN=",Dump $res; }
     return $self->_parse_result($res, $args, $dt_parser);
 }
 
 sub _prepare_request {
-    my ($self, $http_method, $uri, $args, $authenticate) = @_;
-
+    my ($self, $http_method, $uri, $args, $authenticate, $uriencode) = @_;
     my $msg;
 
     my %natural_args = $self->_natural_args($args);
     %natural_args = map { $_ => uri_escape($args->{$_}) } keys %natural_args
-        if $http_method eq 'GET';
+        if $uriencode;
     %natural_args = $self->_encode_args(\%natural_args);
 
     if ( $http_method =~ /^(?:GET|DELETE)$/ ) {
