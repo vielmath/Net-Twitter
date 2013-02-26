@@ -1,4 +1,4 @@
-package Net::Twitter::Role::API::REST11;
+  package Net::Twitter::Role::API::REST11;
 use Moose::Role;
 use Carp;
 use Net::Twitter::API;
@@ -29,6 +29,7 @@ authenticate 1;
 our $DATETIME_PARSER = DateTime::Format::Strptime->new(pattern => '%a %b %d %T %z %Y');
 datetime_parser $DATETIME_PARSER;
 
+# TIMELINES
 twitter_api_method mentions_timeline => (
     description => <<'',
 Returns the 20 most recent mentions (tweets containing a users's @screen_name)
@@ -39,7 +40,7 @@ return up to 800 tweets.
     aliases => [qw/mentions/],
     path    => 'statuses/mentions_timeline',
     method  => 'GET',
-    params  => [qw/since_id max_id count page trim_user include_entities contributor_details/],
+    params  => [qw/count since_id max_id trim_user page contributor_details include_entities/],
     booleans => [qw/trim_user contributor_details include_entities/],
     required => [],
     returns => 'ArrayRef[Status]',
@@ -54,7 +55,7 @@ timeline or is an approved follower of the owner.
 
     path     => 'statuses/user_timeline',
     method   => 'GET',
-    params   => [qw/user_id screen_name since_id max_id count page trim_user exclude_replies contributor_details include_rts/],
+    params   => [qw/user_id screen_name since_id count max_id trim_user exclude_replies contributor_details include_rts/],
     booleans => [qw/trim_user exclude_replies contributor_details include_rts/],
     required => [],
     returns  => 'ArrayRef[Status]',
@@ -74,6 +75,173 @@ authenticating user and that user's friends. This is the equivalent of
     returns   => 'ArrayRef[Status]',
 );
 
+twitter_api_method retweets_of_me => (
+    description => <<'',
+Returns the 20 most recent tweets of the authenticated user that have been
+retweeted by others.
+
+    aliases   => [qw/retweeted_of_me/],
+    path      => 'statuses/retweets_of_me',
+    method    => 'GET',
+    params    => [qw/count since_id max_id trim_user include_entities include_user_entities/],
+    booleans  => [qw/trim_user include_entities include_user_entities/],
+    required  => [],
+    returns   => 'ArrayRef[Status]',
+);
+
+# TWEETS
+twitter_api_method retweets => (
+    description => <<'',
+Returns up to 100 of the first retweets of a given tweet.
+
+    path     => 'statuses/retweets/:id',
+    method   => 'GET',
+    params   => [qw/id count trim_user/],
+    booleans => [qw/trim_user/],
+    required => [qw/id/],
+    returns  => 'Arrayref[Status]',
+);
+
+twitter_api_method show_status => (
+    description => <<'',
+Returns a single status, specified by the id parameter.  The
+status's author will be returned inline.
+
+    path     => 'statuses/show/:id',
+    method   => 'GET',
+    params   => [qw/id trim_user include_my_retweet include_entities/],
+    booleans => [qw/trim_user include_entities/],
+    required => [qw/id/],
+    returns  => 'Status',
+);
+
+twitter_api_method destroy_status => (
+    description => <<'',
+Destroys the status specified by the required ID parameter.  The
+authenticating user must be the author of the specified status.
+
+    path     => 'statuses/destroy/:id',
+    method   => 'POST',
+    params   => [qw/id trim_user/],
+    booleans => [qw/trim_user/],
+    required => [qw/id/],
+    returns  => 'Status',
+);
+
+twitter_api_method update => (
+    path       => 'statuses/update',
+    method     => 'POST',
+    params     => [qw/status in_reply_to_status_id lat long place_id display_coordinates trim_user/],
+    required   => [qw/status/],
+    booleans   => [qw/display_coordinates trim_user/],
+    add_source => 1,
+    returns    => 'Status',
+    description => <<'EOT',
+Updates the authenticating user's status.  Requires the status parameter
+specified.  A status update with text identical to the authenticating
+user's current status will be ignored.
+
+=over 4
+
+=item status
+
+Required.  The text of your status update. URL encode as necessary. Statuses
+over 140 characters will cause a 403 error to be returned from the API.
+
+=item in_reply_to_status_id
+
+Optional. The ID of an existing status that the update is in reply to.  o Note:
+This parameter will be ignored unless the author of the tweet this parameter
+references is mentioned within the status text. Therefore, you must include
+@username, where username is the author of the referenced tweet, within the
+update.
+
+=item lat
+
+Optional. The location's latitude that this tweet refers to.  The valid ranges
+for latitude is -90.0 to +90.0 (North is positive) inclusive.  This parameter
+will be ignored if outside that range, if it is not a number, if geo_enabled is
+disabled, or if there not a corresponding long parameter with this tweet.
+
+=item long
+
+Optional. The location's longitude that this tweet refers to.  The valid ranges
+for longitude is -180.0 to +180.0 (East is positive) inclusive.  This parameter
+will be ignored if outside that range, if it is not a number, if geo_enabled is
+disabled, or if there not a corresponding lat parameter with this tweet.
+
+=item place_id
+
+Optional. The place to attach to this status update.  Valid place_ids can be
+found by querying C<reverse_geocode>.
+
+=item display_coordinates
+
+Optional. By default, geo-tweets will have their coordinates exposed in the
+status object (to remain backwards compatible with existing API applications).
+To turn off the display of the precise latitude and longitude (but keep the
+contextual location information), pass C<display_coordinates => 0> on the
+status update.
+
+=back
+
+EOT
+);
+
+twitter_api_method retweet => (
+    description => <<'',
+Retweets a tweet. Requires the id parameter of the tweet you are retweeting.
+Returns the original tweet with retweet details embedded.
+
+    path      => 'statuses/retweet/:id',
+    method    => 'POST',
+    params    => [qw/id trim_user/],
+    booleans  => [qw/trim_user/],
+    required  => [qw/id/],
+    returns   => 'Status',
+);
+
+twitter_api_method update_with_media => (
+    path        => 'statuses/update_with_media',
+    method      => 'POST',
+    params      => [qw/
+        status media[] possibly_sensitive in_reply_to_status_id lat long place_id display_coordinates
+    /],
+    required    => [qw/status media/],
+    booleans    => [qw/possibly_sensitive display_coordinates/],
+    returns     => 'Status',
+    description => <<'EOT',
+Updates the authenticating user's status and attaches media for upload.
+
+The C<media[]> parameter is an arrayref with the following interpretation:
+
+  [ $file ]
+  [ $file, $filename ]
+  [ $file, $filename, Content_Type => $mime_type ]
+  [ undef, $filename, Content_Type => $mime_type, Content => $raw_image_data ]
+
+The first value of the array (C<$file>) is the name of a file to open.  The
+second value (C<$filename>) is the name given to Twitter for the file.  If
+C<$filename> is not provided, the basename portion of C<$file> is used.  If
+C<$mime_type> is not provided, it will be provided automatically using
+L<LWP::MediaTypes::guess_media_type()>.
+
+C<$raw_image_data> can be provided, rather than opening a file, by passing
+C<undef> as the first array value.
+
+The Tweet text will be rewritten to include the media URL(s), which will reduce
+the number of characters allowed in the Tweet text. If the URL(s) cannot be
+appended without text truncation, the tweet will be rejected and this method
+will return an HTTP 403 error. 
+EOT
+
+);
+#todo: update_with_media
+#todo: oembed
+
+
+
+# SEARCH
 twitter_api_method search_tweets => (
     description => <<'',
 Returns a collection of relevant Tweets matching a specified query.
@@ -88,6 +256,1154 @@ Not all Tweets will be indexed or made available via the search interface.
     required  => [qw/q/],
     returns   => 'HashRef',
 );
+
+# DIRECT MESSAGE
+
+twitter_api_method direct_messages => (
+    description => <<'',
+Returns a list of the 20 most recent direct messages sent to the authenticating
+
+    path     => 'direct_messages',
+    method   => 'GET',
+    params   => [qw/since_id max_id count page include_entities skip_satus/],
+    required => [qw/include_entities skip_status/],
+    returns  => 'ArrayRef[DirectMessage]',
+);
+
+twitter_api_method sent_direct_messages => (
+    description => <<'',
+Returns a list of the 20 most recent direct messages sent by the authenticating
+user including detailed information about the sending and recipient users.
+
+    path     => 'direct_messages/sent',
+    method   => 'GET',
+    params   => [qw/since_id max_id count page include_entities/],
+    booleans => [qw/include_entities/],
+    required => [],
+    returns  => 'ArrayRef[DirectMessage]',
+);
+
+twitter_api_method show_direct_message => (
+    path => 'direct_messages/show/:id',
+    method      => 'GET',
+    params      => [qw/id/],
+    booleans => [],
+    required    => [qw/id/],
+    returns     => 'HashRef',
+    description => <<''
+Returns a single direct message, specified by an id parameter. Like
+the C<direct_messages> request, this method will include the
+user objects of the sender and recipient.  Requires authentication.
+
+);
+
+twitter_api_method destroy_direct_message => (
+    description => <<'',
+Destroys the direct message specified in the required ID parameter.
+The authenticating user must be the recipient of the specified direct
+message.
+
+    path     => 'direct_messages/destroy/:id',
+    method   => 'POST',
+    params   => [qw/id include_entities/],
+    booleans => [qw/include_entities/],
+    required => [qw/id/],
+    returns  => 'DirectMessage',
+);
+
+twitter_api_method new_direct_message => (
+    description => <<'',
+Sends a new direct message to the specified user from the authenticating user.
+Requires both the user and text parameters.  Returns the sent message when
+successful.  In order to support numeric screen names, the C<screen_name> or
+C<user_id> parameters may be used instead of C<user>.
+
+    path     => 'direct_messages/new',
+    method   => 'POST',
+    params   => [qw/user_id screen_name text/],
+    booleans => [],
+    required => [qw/text/],
+    returns  => 'DirectMessage',
+);
+
+# FRIENDS & FOLLOWERS
+
+twitter_api_method friends_ids => (
+    description => <<'EOT',
+Returns a reference to an array of numeric IDs for every user followed by the
+specified user. The order of the IDs is reverse chronological.
+
+Use the optional C<cursor> parameter to retrieve IDs in pages of 5000.  When
+the C<cursor> parameter is used, the return value is a reference to a hash with
+keys C<previous_cursor>, C<next_cursor>, and C<ids>.  The value of C<ids> is a
+reference to an array of IDS of the user's friends. Set the optional C<cursor>
+parameter to -1 to get the first page of IDs.  Set it to the prior return's
+value of C<previous_cursor> or C<next_cursor> to page forward or backwards.
+When there are no prior pages, the value of C<previous_cursor> will be 0.  When
+there are no subsequent pages, the value of C<next_cursor> will be 0.
+EOT
+
+    aliases  => [qw/following_ids/],
+    path     => 'friends/ids',
+    method   => 'GET',
+    params   => [qw/user_id screen_name cursor stringify_ids/],
+    booleans => [qw/stringify_ids/],
+    required => [],
+    returns  => 'HashRef|ArrayRef[Int]',
+);
+
+twitter_api_method followers_ids => (
+    description => <<'EOT',
+Returns a reference to an array of numeric IDs for every user following the
+specified user. The order of the IDs may change from call to call. To obtain
+the screen names, pass the arrayref to L</lookup_users>.
+
+Use the optional C<cursor> parameter to retrieve IDs in pages of 5000.  When
+the C<cursor> parameter is used, the return value is a reference to a hash with
+keys C<previous_cursor>, C<next_cursor>, and C<ids>.  The value of C<ids> is a
+reference to an array of IDS of the user's followers. Set the optional C<cursor>
+parameter to -1 to get the first page of IDs.  Set it to the prior return's
+value of C<previous_cursor> or C<next_cursor> to page forward or backwards.
+When there are no prior pages, the value of C<previous_cursor> will be 0.  When
+there are no subsequent pages, the value of C<next_cursor> will be 0.
+EOT
+
+    path     => 'followers/ids',
+    method   => 'GET',
+    params   => [qw/user_id screen_name cursor stringify_ids/],
+    booleans => [qw/stringify_ids/],
+    required => [],
+    returns  => 'HashRef|ArrayRef[Int]',
+);
+
+twitter_api_method lookup_friendships => (
+    path        => 'friendships/lookup',
+    method      => 'GET',
+    params      => [qw/screen_name user_id/],
+    required    => [],
+    returns     => 'ArrayRef',
+    description => <<''
+Returns the relationship of the authenticating user to the comma separated list
+or ARRAY ref of up to 100 screen_names or user_ids provided. Values for
+connections can be: following, following_requested, followed_by, none.
+Requires authentication.
+
+);
+
+twitter_api_method friendships_incoming => (
+    path => 'friendships/incoming',
+    method => 'GET',
+    params => [qw/cursor stringify_ids/],
+    required => [qw/cursor/],
+    booleans => [qw/stringify_ids/],
+    returns  => 'HashRef',
+    description => <<'',
+Returns an HASH ref with an array of numeric IDs in the C<ids> element for
+every user who has a pending request to follow the authenticating user.
+
+);
+
+twitter_api_method friendships_outgoing => (
+    path => 'friendships/outgoing',
+    method => 'GET',
+    params => [qw/cursor stringify_ids/],
+    required => [qw/cursor/],
+    booleans => [qw/stringify_ids/],
+    returns  => 'HashRef',
+    description => <<'',
+Returns an HASH ref with an array of numeric IDs in the C<ids> element for
+every protected user for whom the authenticating user has a pending follow
+request.
+
+);
+
+twitter_api_method create_friend => (
+    description => <<'',
+Befriends the user specified in the ID parameter as the authenticating user.
+Returns the befriended user when successful.  Returns a string describing the
+failure condition when unsuccessful.
+
+    aliases  => [qw/follow_new/],
+    path     => 'friendships/create',
+    method   => 'POST',
+    params   => [qw/screen_name user_id follow/],
+    booleans => [qw/follow/],
+    required => [],
+    returns  => 'BasicUser',
+);
+
+twitter_api_method destroy_friend => (
+    description => <<'',
+Discontinues friendship with the user specified in the ID parameter as the
+authenticating user.  Returns the un-friended user when successful.
+Returns a string describing the failure condition when unsuccessful.
+
+    aliases  => [qw/unfollow/],
+    path     => 'friendships/destroy',
+    method   => 'POST',
+    params   => [qw/screen_name user_id/],
+    booleans => [],
+    required => [],
+    returns  => 'BasicUser',
+);
+
+twitter_api_method update_friendship => (
+    path        => 'friendships/update',
+    method      => 'POST',
+    params      => [qw/screen_name user_id device retweets/],
+    required    => [],
+    booleans    => [qw/device retweets/],
+    returns     => 'HashRef',
+    description => <<''
+Allows you enable or disable retweets and device notifications from the
+specified user. All other values are assumed to be false.  Requires
+authentication.
+
+);
+
+twitter_api_method show_friendship => (
+    description => <<'',
+Returns detailed information about the relationship between two users.
+
+    aliases  => [qw/show_relationship/],
+    path     => 'friendships/show',
+    method   => 'GET',
+    params   => [qw/source_id source_screen_name target_id target_screen_name/],
+    required => [],
+    returns  => 'Relationship',
+);
+
+#todo friends/list
+#todo followers/list
+
+#USERS
+
+twitter_api_method account_settings => (
+    path => 'account/settings',
+    method      => 'GET',
+    params      => [],
+    required    => [],
+    returns     => 'HashRef',
+    description => <<''
+Returns the current trend, geo and sleep time information for the
+authenticating user.
+
+);
+
+twitter_api_method verify_credentials => (
+    description => <<'',
+Returns an HTTP 200 OK response code and a representation of the
+requesting user if authentication was successful; returns a 401 status
+code and an error message if not.  Use this method to test if supplied
+user credentials are valid.
+
+    path     => 'account/verify_credentials',
+    method   => 'GET',
+    params   => [qw/include_entities skip_status/],
+    booleans => [qw/include_entities skip_status/],
+    required => [],
+    returns  => 'ExtendedUser',
+);
+
+#todo: post account/settings
+
+twitter_api_method update_delivery_device => (
+    description => <<'',
+Sets which device Twitter delivers updates to for the authenticating
+user.  Sending none as the device parameter will disable IM or SMS
+updates.
+
+    path     => 'account/update_delivery_device',
+    method   => 'POST',
+    params   => [qw/device include_entities/],
+    required => [qw/device/],
+    booleans => [qw/include_entities/],
+    returns  => 'BasicUser',
+);
+
+twitter_api_method update_profile => (
+    description => <<'',
+Sets values that users are able to set under the "Account" tab of their
+settings page. Only the parameters specified will be updated; to only
+update the "name" attribute, for example, only include that parameter
+in your request.
+
+    path     => 'account/update_profile',
+    method   => 'POST',
+    params   => [qw/name url location description include_entities skip_status/],
+    booleans => [qw/include_entities skip_status/],
+    required => [],
+    returns  => 'ExtendedUser',
+);
+
+twitter_api_method update_profile_background_image => (
+    description => <<'',
+Updates the authenticating user's profile background image. The C<image>
+parameter must be an arrayref with the same interpretation as the C<image>
+parameter in the C<update_profile_image> method.  The C<use> parameter allows
+you to specify whether to use the  uploaded profile background or not. See
+that method's documentation for details.
+
+    path     => 'account/update_profile_background_image',
+    method   => 'POST',
+    params   => [qw/image tile include_entities skip_status use/],
+    required => [],
+    booleans => [qw/tile include_entities skip_status use/],
+    returns  => 'ExtendedUser',
+);
+
+twitter_api_method update_profile_colors => (
+    description => <<'',
+Sets one or more hex values that control the color scheme of the
+authenticating user's profile page on twitter.com.  These values are
+also returned in the /users/show API method.
+
+    path     => 'account/update_profile_colors',
+    method   => 'POST',
+    params   => [qw/
+        profile_background_color
+        profile_link_color
+        profile_sidebar_border_color
+        profile_sidebar_fill_color
+        profile_text_color
+        include_entities
+        skip_status
+    /],
+    required => [],
+    booleans => [qw/include_entities skip_status/],
+    returns  => 'ExtendedUser',
+);
+
+twitter_api_method update_profile_image => (
+    description => <<'EOT',
+Updates the authenticating user's profile image.  The C<image> parameter is an
+arrayref with the following interpretation:
+
+  [ $file ]
+  [ $file, $filename ]
+  [ $file, $filename, Content_Type => $mime_type ]
+  [ undef, $filename, Content_Type => $mime_type, Content => $raw_image_data ]
+
+The first value of the array (C<$file>) is the name of a file to open.  The
+second value (C<$filename>) is the name given to Twitter for the file.  If
+C<$filename> is not provided, the basename portion of C<$file> is used.  If
+C<$mime_type> is not provided, it will be provided automatically using
+L<LWP::MediaTypes::guess_media_type()>.
+
+C<$raw_image_data> can be provided, rather than opening a file, by passing
+C<undef> as the first array value.
+EOT
+
+    path     => 'account/update_profile_image',
+    method   => 'POST',
+    params   => [qw/image include_entities skip_status/],
+    required => [qw/image/],
+    booleans => [qw/include_entities skip_status/],
+    returns  => 'ExtendedUser',
+);
+
+#todo blocks/lists
+#todo blocks/ids
+
+twitter_api_method create_block => (
+    description => <<'',
+Blocks the user specified in the ID parameter as the authenticating user.
+Returns the blocked user when successful.  You can find out more about
+blocking in the Twitter Support Knowledge Base.
+
+    path     => 'blocks/create',
+    method   => 'POST',
+    params   => [qw/screen_name user_id include_entities skip_status/],
+    booleans => [qw/include_entities skip_status/],    
+    required => [],
+    returns  => 'BasicUser',
+);
+
+twitter_api_method destroy_block => (
+    description => <<'',
+Un-blocks the user specified in the ID parameter as the authenticating user.
+Returns the un-blocked user when successful.
+
+    path     => 'blocks/destroy',
+    method   => 'POST',
+    params   => [qw/screen_name user_id include_entities skip_status/],
+    booleans => [qw/include_entities skip_status/],
+    required => [],
+    returns  => 'BasicUser',
+);
+
+twitter_api_method lookup_users => (
+    path => 'users/lookup',
+    method => 'GET',
+    params => [qw/screen_name user_id include_entities/],
+    booleans => [qw/include_entities/],
+    required => [],
+    returns => 'ArrayRef[User]',
+    description => <<'EOT'
+Return up to 100 users worth of extended information, specified by either ID,
+screen name, or combination of the two. The author's most recent status (if the
+authenticating user has permission) will be returned inline.  This method is
+rate limited to 1000 calls per hour.
+
+This method will accept user IDs or screen names as either a comma delimited
+string, or as an ARRAY ref.  It will also accept arguments in the normal
+HASHREF form or as a simple list of named arguments.  I.e., any of the
+following forms are acceptable:
+
+    $nt->lookup_users({ user_id => '1234,6543,3333' });
+    $nt->lookup_users(user_id => '1234,6543,3333');
+    $nt->lookup_users({ user_id => [ 1234, 6543, 3333 ] });
+    $nt->lookup_users({ screen_name => 'fred,barney,wilma' });
+    $nt->lookup_users(screen_name => ['fred', 'barney', 'wilma']);
+
+    $nt->lookup_users(
+        screen_name => ['fred', 'barney' ],
+        user_id     => '4321,6789',
+    );
+
+EOT
+);
+
+twitter_api_method show_user => (
+    description => <<'',
+Returns extended information of a given user, specified by ID or screen
+name as per the required id parameter.  This information includes
+design settings, so third party developers can theme their widgets
+according to a given user's preferences. You must be properly
+authenticated to request the page of a protected user.
+
+    path     => 'users/show',
+    method   => 'GET',
+    params   => [qw/user_id screen_name include_entities/],
+    booleans => [qw/include_entities/],
+    required => [],
+    returns  => 'ExtendedUser',
+);
+
+twitter_api_method users_search => (
+    aliases     => [qw/find_people search_users/],
+    path        => 'users/search',
+    method      => 'GET',
+    params      => [qw/q page count include_entities/],
+    booleans    => [qw/include_entities/],
+    required    => [qw/q/],
+    returns     => 'ArrayRef[Users]',
+    description => <<'',
+Run a search for users similar to Find People button on Twitter.com; the same
+results returned by people search on Twitter.com will be returned by using this
+API (about being listed in the People Search).  It is only possible to retrieve
+the first 1000 matches from this API.
+
+);
+
+twitter_api_method contributees => (
+    path        => 'users/contributees',
+    method      => 'GET',
+    params      => [qw/user_id screen_name include_entities skip_satus/],
+    required    => [],
+    booleans    => [qw/include_entities skip_satus/],
+    returns     => 'ArrayRef[User]',
+    description => <<'',
+Returns an array of users that the specified user can contribute to.
+
+);
+
+twitter_api_method contributors => (
+    path        => 'users/contributors',
+    method      => 'GET',
+    params      => [qw/user_id screen_name include_entities skip_satus/],
+    required    => [],
+    booleans    => [qw/include_entities skip_satus/],
+    returns     => 'ArrayRef[User]',
+    description => <<'',
+Returns an array of users who can contribute to the specified account.
+
+);
+
+
+
+#todo account/remove_profile_banner
+#todo account/update_profile_banner
+#todo users/profile_banner
+
+# SUGGESTED USERS
+#todo:  users/suggestions/:slug
+
+twitter_api_method suggestion_categories => (
+    path        => 'users/suggestions',
+    method      => 'GET',
+    params      => [qw/lang/],
+    required    => [],
+    returns     => 'ArrayRef',
+    description => <<''
+Returns the list of suggested user categories. The category slug can be used in
+the C<user_suggestions> API method get the users in that category .  Does not
+require authentication.
+
+);
+
+twitter_api_method user_suggestions => (
+    aliases     => [qw/follow_suggestions/],
+    path        => 'users/suggestions/:category/members',
+    method      => 'GET',
+    params      => [qw/category/],
+    required    => [qw/category/],
+    returns     => 'ArrayRef',
+    description => <<''
+Access the users in a given category of the Twitter suggested user list and
+return their most recent status if they are not a protected user. Currently
+supported values for optional parameter C<lang> are C<en>, C<fr>, C<de>, C<es>,
+C<it>.  Does not require authentication.
+
+);
+
+# FAVORITES
+
+twitter_api_method favorites => (
+    description => <<'',
+Returns the 20 most recent favorite statuses for the authenticating
+user or user specified by the ID parameter.
+
+    path     => 'favorites/list',
+    method   => 'GET',
+    params   => [qw/user_id screen_name count since_id max_id include_entities/],
+    booleans => [qw/include_entities/],
+    required => [],
+    returns  => 'ArrayRef[Status]',
+);
+
+twitter_api_method destroy_favorite => (
+    description => <<'',
+Un-favorites the status specified in the ID parameter as the
+authenticating user.  Returns the un-favorited status.
+
+    path     => 'favorites/destroy',
+    method   => 'POST',
+    params   => [qw/id include_entities/],
+    booleans => [qw/include_entities/],
+    required => [qw/id/],
+    returns  => 'Status',
+);
+
+twitter_api_method create_favorite => (
+    description => <<'',
+Favorites the status specified in the ID parameter as the
+authenticating user.  Returns the favorite status when successful.
+
+    path     => 'favorites/create',
+    method   => 'POST',
+    params   => [qw/id include_entities/],
+    booleans => [qw/include_entities/],
+    required => [qw/id/],
+    returns  => 'Status',
+);
+
+# LISTS
+
+twitter_api_method all_subscriptions => (
+    path        => 'lists/list',
+    method      => 'GET',
+    params      => [qw/user_id screen_name/],
+    required    => [],
+    returns     => 'ArrayRef[List]',
+    aliases     => [qw/all_lists list_subscriptions/],
+    description => <<'',
+Returns all lists the authenticating or specified user subscribes to, including
+their own. The user is specified using the user_id or screen_name parameters.
+If no user is given, the authenticating user is used.
+
+);
+
+twitter_api_method list_statuses => (
+    path        => 'lists/statuses',
+    method      => 'GET',
+    params      => [qw/list_id slug owner_screen_name owner_id since_id max_id count include_entities include_rts/],
+    required    => [qw/list_id slug/],
+    booleans    => [qw/include_entities include_rts/],
+    returns     => 'ArrayRef[Status]',
+    description => <<'',
+Returns tweet timeline for members of the specified list. Historically,
+retweets were not available in list timeline responses but you can now use the
+include_rts=true parameter to additionally receive retweet objects.
+
+);
+
+twitter_api_method delete_list_member => (
+    path        => 'lists/members/destroy',
+    method      => 'POST',
+    params      => [qw/list_id slug user_id screen_name owner_screen_name owner_id/],
+    required    => [],
+    returns     => 'User',
+    aliases     => [qw/remove_list_member/],
+    description => <<'',
+Removes the specified member from the list. The authenticated user must be the
+list's owner to remove members from the list.
+
+);
+
+twitter_api_method list_memberships => (
+    path        => 'lists/memberships',
+    method      => 'GET',
+    params      => [qw/user_id screen_name cursor filter_to_owned_lists/],
+    required    => [],
+    booleans    => [qw/filter_to_owned_lists/],
+    returns     => 'Hashref',
+    description => <<'',
+Returns the lists the specified user has been added to. If user_id or
+screen_name are not provided the memberships for the authenticating user are
+returned.
+
+);
+
+twitter_api_method list_subscribers => (
+    path        => 'lists/subscribers',
+    method      => 'GET',
+    params      => [qw/list_id slug owner_screen_name owner_id cursor include_entities skip_status/],
+    required    => [],
+    booleans    => [qw/include_entities skip_status/],
+    returns     => 'Hashref',
+    description => <<'',
+Returns the subscribers of the specified list. Private list subscribers will
+only be shown if the authenticated user owns the specified list.
+
+);
+
+twitter_api_method subscribe_list => (
+    path        => 'lists/subscribers/create',
+    method      => 'POST',
+    params      => [qw/owner_screen_name owner_id list_id slug/],
+    required    => [],
+    returns     => 'List',
+    description => <<'',
+Subscribes the authenticated user to the specified list.
+
+);
+
+twitter_api_method is_list_subscriber => (
+    path        => 'lists/subscribers/show',
+    method      => 'GET',
+    params      => [qw/
+        owner_screen_name owner_id list_id slug user_id screen_name
+        include_entities skip_status
+    /],
+    required    => [],
+    booleans    => [qw/include_entities skip_status/],
+    returns     => 'Maybe[User]',
+    aliases     => [qw/is_subscribed_list/],
+    description => <<'',
+Check if the specified user is a subscriber of the specified list. Returns the
+user or undef.
+
+);
+
+around [qw/is_list_subscriber is_subscribed_list/] => sub {
+    my $orig = shift;
+    my $self = shift;
+
+    $self->_user_or_undef($orig, 'subscriber', @_);
+};
+
+twitter_api_method unsubscribe_list => (
+    path        => 'lists/subscribers/destroy',
+    method      => 'POST',
+    params      => [qw/list_id slug owner_screen_name owner_id/],
+    required    => [],
+    returns     => 'List',
+    description => <<'',
+Unsubscribes the authenticated user from the specified list.
+
+);
+
+twitter_api_method members_create_all => (
+    path        => 'lists/members/create_all',
+    method      => 'POST',
+    params      => [qw/list_id slug user_id screen_name owner_screen_name owner_id/],
+    required    => [],
+    returns     => 'List',
+    aliases     => [qw/add_list_members/],
+    description => <<'',
+Adds multiple members to a list, by specifying a reference to an array or a
+comma-separated list of member ids or screen names. The authenticated user must
+own the list to be able to add members to it. Note that lists can't have more
+than 500 members, and you are limited to adding up to 100 members to a list at
+a time with this method.
+
+);
+
+twitter_api_method is_list_member => (
+    path        => 'lists/members/show',
+    method      => 'GET',
+    params      => [qw/
+        list_id slug user_id screen_name owner_screen_name owner_id include_entities skip_status
+    /],
+    required    => [],
+    booleans    => [qw/include_entities skip_status/],
+    returns     => 'Maybe[User]',
+    description => <<'',
+Check if the specified user is a member of the specified list. Returns the user or undef.
+
+);
+
+around is_list_member => sub {
+    my $orig = shift;
+    my $self = shift;
+
+    $self->_user_or_undef($orig, 'member', @_);
+};
+
+twitter_api_method list_members => (
+    path        => 'lists/members',
+    method      => 'GET',
+    params      => [qw/
+        list_id slug owner_screen_name owner_id cursor include_entities skip_status
+    /],
+    required    => [],
+    booleans    => [qw/include_entities skip_status/],
+    returns     => 'Hashref',
+    description => <<'',
+Returns the members of the specified list. Private list members will only be
+shown if the authenticated user owns the specified list.
+
+);
+
+twitter_api_method add_list_member => (
+    path        => 'lists/members/create',
+    method      => 'POST',
+    params      => [qw/list_id slug user_id screen_name owner_screen_name owner_id/],
+    required    => [],
+    returns     => 'User',
+    description => <<'',
+Add a member to a list. The authenticated user must own the list to be able to
+add members to it. Note that lists can't have more than 500 members.
+
+);
+
+twitter_api_method delete_list => (
+    path        => 'lists/destroy',
+    method      => 'POST',
+    params      => [qw/owner_screen_name owner_id list_id slug/],
+    required    => [],
+    returns     => 'List',
+    description => <<'',
+Deletes the specified list. The authenticated user must own the list to be able
+to destroy it.
+
+);
+
+twitter_api_method update_list => (
+    path        => 'lists/update',
+    method      => 'POST',
+    params      => [qw/list_id slug name mode description owner_screen_name owner_id/],
+    required    => [],
+    returns     => 'List',
+    description => <<'',
+Updates the specified list. The authenticated user must own the list to be able
+to update it.
+
+);
+
+twitter_api_method create_list => (
+    path        => 'lists/create',
+    method      => 'POST',
+    params      => [qw/name mode description/],
+    required    => [qw/name/],
+    returns     => 'List',
+    description => <<'',
+Creates a new list for the authenticated user. Note that you can't create more
+than 20 lists per account.
+
+);
+
+twitter_api_method get_list => (
+    path        => 'lists/show',
+    method      => 'GET',
+    params      => [qw/list_id slug owner_screen_name owner_id/],
+    required    => [],
+    returns     => 'List',
+    description => <<'',
+Returns the specified list. Private lists will only be shown if the
+authenticated user owns the specified list.
+
+);
+
+twitter_api_method subscriptions => (
+    path        => 'lists/subscriptions',
+    method      => 'GET',
+    params      => [qw/user_id screen_name count cursor/],
+    required    => [],
+    returns     => 'ArrayRef[List]',
+    aliases     => [],
+    description => <<'',
+Obtain a collection of the lists the specified user is subscribed to, 20 lists
+per page by default. Does not include the user's own lists.
+
+);
+
+twitter_api_method members_destroy_all => (
+    path        => 'lists/members/destroy_all',
+    method      => 'POST',
+    params      => [qw/list_id slug user_id screen_name owner_screen_name owner_id/],
+    required    => [],
+    returns     => 'List',
+    aliases     => [qw/remove_list_members/],
+    description => <<'EOT',
+Removes multiple members from a list, by specifying a reference to an array of
+member ids or screen names, or a string of comma separated user ids or screen
+names.  The authenticated user must own the list to be able to remove members
+from it. Note that lists can't have more than 500 members, and you are limited
+to removing up to 100 members to a list at a time with this method.
+
+Please note that there can be issues with lists that rapidly remove and add
+memberships. Take care when using these methods such that you are not too
+rapidly switching between removals and adds on the same list.
+
+EOT
+);
+
+# SAVED SEARCHES
+
+twitter_api_method saved_searches => (
+    description => <<'',
+Returns the authenticated user's saved search queries.
+
+    path     => 'saved_searches/list',
+    method   => 'GET',
+    params   => [],
+    required => [],
+    returns  => 'ArrayRef[SavedSearch]',
+);
+
+twitter_api_method show_saved_search => (
+    description => <<'',
+Retrieve the data for a saved search, by C<id>, owned by the authenticating user.
+
+    path     => 'saved_searches/show/:id',
+    method   => 'GET',
+    params   => [qw/id/],
+    required => [qw/id/],
+    returns  => 'SavedSearch',
+);
+
+twitter_api_method create_saved_search => (
+    description => <<'',
+Creates a saved search for the authenticated user.
+
+    path     => 'saved_searches/create',
+    method   => 'POST',
+    params   => [qw/query/],
+    required => [qw/query/],
+    returns  => 'SavedSearch',
+);
+
+twitter_api_method destroy_saved_search => (
+    description => <<'',
+Destroys a saved search. The search, specified by C<id>, must be owned
+by the authenticating user.
+
+    path     => 'saved_searches/destroy/:id',
+    method   => 'POST',
+    params   => [qw/id/],
+    required => [qw/id/],
+    returns  => 'SavedSearch',
+);
+
+# PLACES & GEO
+
+twitter_api_method geo_id => (
+    path => 'geo/id/:id',
+    method => 'GET',
+    params => [qw/id/],
+    required => [qw/id/],
+    returns  => 'HashRef',
+    description => <<'EOT',
+Returns details of a place returned from the C<reverse_geocode> method.
+EOT
+);
+
+twitter_api_method reverse_geocode => (
+    path        => 'geo/reverse_geocode',
+    method      => 'GET',
+    params      => [qw/lat long accuracy granularity max_results callback/],
+    required    => [qw/lat long/],
+    returns     => 'HashRef',
+    description => <<'EOT',
+
+Search for places (cities and neighborhoods) that can be attached to a
+statuses/update.  Given a latitude and a longitude, return a list of all the
+valid places that can be used as a place_id when updating a status.
+Conceptually, a query can be made from the user's location, retrieve a list of
+places, have the user validate the location he or she is at, and then send the
+ID of this location up with a call to statuses/update.
+
+There are multiple granularities of places that can be returned --
+"neighborhoods", "cities", etc.  At this time, only United States data is
+available through this method.
+
+=over 4
+
+=item lat
+
+Required.  The latitude to query about.  Valid ranges are -90.0 to +90.0 (North
+is positive) inclusive.
+
+=item long
+
+Required. The longitude to query about.  Valid ranges are -180.0 to +180.0
+(East is positive) inclusive.
+
+=item accuracy
+
+Optional. A hint on the "region" in which to search.  If a number, then this is
+a radius in meters, but it can also take a string that is suffixed with ft to
+specify feet.  If this is not passed in, then it is assumed to be 0m.  If
+coming from a device, in practice, this value is whatever accuracy the device
+has measuring its location (whether it be coming from a GPS, WiFi
+triangulation, etc.).
+
+=item granularity
+
+Optional.  The minimal granularity of data to return.  If this is not passed
+in, then C<neighborhood> is assumed.  C<city> can also be passed.
+
+=item max_results
+
+Optional.  A hint as to the number of results to return.  This does not
+guarantee that the number of results returned will equal max_results, but
+instead informs how many "nearby" results to return.  Ideally, only pass in the
+number of places you intend to display to the user here.
+
+=back
+
+EOT
+);
+
+twitter_api_method geo_search => (
+    path        => 'geo/search',
+    method      => 'GET',
+    params      => [qw/
+        lat long query ip granularity accuracy max_results
+        contained_within attribute:street_address callback
+    /],
+    required    => [],
+    returns     => 'HashRef',
+    description => <<'EOT',
+Search for places that can be attached to a statuses/update. Given a latitude
+and a longitude pair, an IP address, or a name, this request will return a list
+of all the valid places that can be used as the place_id when updating a
+status.
+
+Conceptually, a query can be made from the user's location, retrieve a list of
+places, have the user validate the location he or she is at, and then send the
+ID of this location with a call to statuses/update.
+
+This is the recommended method to use find places that can be attached to
+statuses/update. Unlike geo/reverse_geocode which provides raw data access,
+this endpoint can potentially re-order places with regards to the user who
+is authenticated. This approach is also preferred for interactive place
+matching with the user.
+EOT
+
+);
+
+twitter_api_method similar_places => (
+    path        => 'geo/similar_places',
+    method      => 'GET',
+    params      => [qw/lat long name contained_within attribute:street_address callback/],
+    required    => [qw/lat long name/],
+    returns     => 'HashRef',
+    description => <<'EOT',
+Locates places near the given coordinates which are similar in name.
+
+Conceptually you would use this method to get a list of known places to choose
+from first. Then, if the desired place doesn't exist, make a request to
+C<add_place> to create a new one.
+
+The token contained in the response is the token needed to be able to create a
+new place.
+EOT
+
+);
+
+twitter_api_method add_place => (
+    path        => 'geo/place',
+    method      => 'POST',
+    params      => [qw/name contained_within token lat long attribute:street_address callback/],
+    required    => [qw/name contained_within token lat long/],
+    returns     => 'Place',
+    description => <<'EOT',
+Creates a new place object at the given latitude and longitude.
+
+Before creating a place you need to query C<similar_places> with the latitude,
+longitude and name of the place you wish to create. The query will return an
+array of places which are similar to the one you wish to create, and a token.
+If the place you wish to create isn't in the returned array you can use the
+token with this method to create a new one.
+EOT
+
+);
+
+# TRENDS
+
+twitter_api_method trends_location => (
+    path        => 'trends/place',
+    method      => 'GET',
+    params      => [qw/id exclude/],
+    required    => [qw/id/],
+    returns     => 'ArrayRef[Trend]',
+    authenticate => 0,
+    description => <<'',
+Returns the top 10 trending topics for a specific location. The response is an
+array of "trend" objects that encode the name of the trending topic, the query
+parameter that can be used to search for the topic on Search, and the direct
+URL that can be issued against Search.  This information is cached for five
+minutes, and therefore users are discouraged from querying these endpoints
+faster than once every five minutes.  Global trends information is also
+available from this API by using a WOEID of 1.
+
+);
+
+twitter_api_method trends_available => (
+    path        => 'trends/available',
+    method      => 'GET',
+    params      => [],
+    required    => [],
+    authenticate => 0,
+    returns     => 'ArrayRef[Location]',
+    description => <<EOT,
+Returns the locations with trending topic information. The response is an
+array of "locations" that encode the location's WOEID (a Yahoo!  Where On Earth
+ID L<http://developer.yahoo.com/geo/geoplanet/>) and some other human-readable
+information such as a the location's canonical name and country.
+
+When the optional C<lat> and C<long> parameters are passed, the available trend
+locations are sorted by distance from that location, nearest to farthest.
+
+Use the WOEID returned in the location object to query trends for a specific
+location.
+EOT
+);
+
+
+twitter_api_method trends_available => (
+    path        => 'trends/closest',
+    method      => 'GET',
+    params      => [qw/lat long/],
+    required    => [],
+    authenticate => 0,
+    returns     => 'Location',
+    description => <<EOT,
+Returns the locations that Twitter has trending topic information for,
+closest to a specified location.
+
+The response is an array of "locations" that encode the location's WOEID
+and some other human-readable information such as a canonical name and country the location belongs in.
+
+A WOEID is a Yahoo! Where On Earth ID.
+EOT
+);
+
+# SPAM REPORTING
+
+twitter_api_method report_spam => (
+    description => <<'',
+The user specified in the id is blocked by the authenticated user and reported as a spammer.
+
+    path     => 'report_spam',
+    method   => 'POST',
+    params   => [qw/screen_name user_id/],
+    booleans => [],
+    required => [qw/id/],
+    returns  => 'User',
+);
+
+twitter_api_method get_configuration => (
+    path        => 'help/configuration',
+    method      => 'GET',
+    params      => [],
+    required    => [],
+    returns     => 'HashRef',
+    description => <<'EOT',
+Returns the current configuration used by Twitter including twitter.com slugs
+which are not usernames, maximum photo resolutions, and t.co URL lengths.
+
+It is recommended applications request this endpoint when they are loaded, but
+no more than once a day.
+EOT
+
+);
+
+twitter_api_method get_languages => (
+    path        => 'help/languages',
+    method      => 'GET',
+    params      => [],
+    required    => [],
+    returns     => 'ArrayRef[Lanugage]',
+    description => <<'',
+Returns the list of languages supported by Twitter along with their ISO 639-1
+code. The ISO 639-1 code is the two letter value to use if you include lang
+with any of your requests.
+
+);
+
+twitter_api_method get_privacy_policy => (
+    path        => 'help/privacy',
+    method      => 'GET',
+    params      => [],
+    required    => [],
+    returns     => 'HashRef',
+    description => <<'',
+Returns Twitter's privacy policy.
+
+);
+
+twitter_api_method get_tos => (
+    path        => 'help/tos',
+    method      => 'GET',
+    params      => [],
+    required    => [],
+    returns     => 'HashRef',
+    description => <<'',
+Returns the Twitter Terms of Service. These are not the same as the Developer
+Rules of the Road.
+
+);
+
+twitter_api_method rate_limit_status => (
+    description => <<'EOT',
+Returns the current rate limits for methods belonging to the specified 
+resource families.
+
+Each 1.1 API resource belongs to a "resource family" which is indicated 
+in its method documentation. You can typically determine a method's resource 
+family from the first component of the path after the resource version.
+
+This method responds with a map of methods belonging to the families 
+specified by the resources parameter, the current remaining uses for each of 
+those resources within the current rate limiting window, and its expiration 
+time in epoch time. It also includes a rate_limit_context field that 
+indicates the current access token context.
+EOT
+
+    path     => 'application/rate_limit_status',
+    method   => 'GET',
+    params   => [qw/resources/],
+    required => [],
+    returns  => 'HashRef',
+);
+
+# twitter_api_method get_lists => (
+#     path        => 'lists',
+#     method      => 'GET',
+#     params      => [qw/user_id screen_name cursor/],
+#     required    => [],
+#     returns     => 'Hashref',
+#     aliases     => [qw/list_lists/],
+#     description => <<'',
+# Returns the lists of the specified (or authenticated) user. Private lists will
+# be included if the authenticated user is the same as the user whose lists are
+# being returned.
+
+# );
 
 # twitter_api_method public_timeline => (
 #     description => <<'EOT',
@@ -110,31 +1426,6 @@ Not all Tweets will be indexed or made available via the search interface.
 #     required => [],
 # );
 
-
-# twitter_api_method retweet => (
-#     description => <<'',
-# Retweets a tweet. Requires the id parameter of the tweet you are retweeting.
-# Returns the original tweet with retweet details embedded.
-
-#     path      => 'statuses/retweet/:id',
-#     method    => 'POST',
-#     params    => [qw/id include_entities trim_user/],
-#     booleans  => [qw/include_entities trim_user/],
-#     required  => [qw/id/],
-#     returns   => 'Status',
-# );
-
-# twitter_api_method retweets => (
-#     description => <<'',
-# Returns up to 100 of the first retweets of a given tweet.
-
-#     path     => 'statuses/retweets/:id',
-#     method   => 'GET',
-#     params   => [qw/id count trim_user include_entities/],
-#     booleans => [qw/trim_user include_entities/],
-#     required => [qw/id/],
-#     returns  => 'Arrayref[Status]',
-# );
 
 # twitter_api_method retweeted_by_me => (
 #     description => <<'',
@@ -159,20 +1450,6 @@ Not all Tweets will be indexed or made available via the search interface.
 #     returns   => 'ArrayRef[Status]',
 # );
 
-# twitter_api_method retweets_of_me => (
-#     description => <<'',
-# Returns the 20 most recent tweets of the authenticated user that have been
-# retweeted by others.
-
-#     aliases   => [qw/retweeted_of_me/],
-#     path      => 'statuses/retweets_of_me',
-#     method    => 'GET',
-#     params    => [qw/since_id max_id count page trim_user include_entities/],
-#     booleans  => [qw/trim_user include_entities/],
-#     required  => [],
-#     returns   => 'ArrayRef[Status]',
-# );
-
 # twitter_api_method friends_timeline => (
 #     deprecated  => 1,
 #     description => <<'',
@@ -188,93 +1465,7 @@ Not all Tweets will be indexed or made available via the search interface.
 #     returns   => 'ArrayRef[Status]',
 # );
 
-# twitter_api_method show_status => (
-#     description => <<'',
-# Returns a single status, specified by the id parameter.  The
-# status's author will be returned inline.
 
-#     path     => 'statuses/show/:id',
-#     method   => 'GET',
-#     params   => [qw/id trim_user include_entities/],
-#     booleans => [qw/trim_user include_entities/],
-#     required => [qw/id/],
-#     returns  => 'Status',
-# );
-
-# twitter_api_method update => (
-#     path       => 'statuses/update',
-#     method     => 'POST',
-#     params     => [qw/status lat long place_id display_coordinates in_reply_to_status_id trim_user include_entities/],
-#     required   => [qw/status/],
-#     booleans   => [qw/display_coordinates trim_user include_entities/],
-#     add_source => 1,
-#     returns    => 'Status',
-#     description => <<'EOT',
-
-# Updates the authenticating user's status.  Requires the status parameter
-# specified.  A status update with text identical to the authenticating
-# user's current status will be ignored.
-
-# =over 4
-
-# =item status
-
-# Required.  The text of your status update. URL encode as necessary. Statuses
-# over 140 characters will cause a 403 error to be returned from the API.
-
-# =item in_reply_to_status_id
-
-# Optional. The ID of an existing status that the update is in reply to.  o Note:
-# This parameter will be ignored unless the author of the tweet this parameter
-# references is mentioned within the status text. Therefore, you must include
-# @username, where username is the author of the referenced tweet, within the
-# update.
-
-# =item lat
-
-# Optional. The location's latitude that this tweet refers to.  The valid ranges
-# for latitude is -90.0 to +90.0 (North is positive) inclusive.  This parameter
-# will be ignored if outside that range, if it is not a number, if geo_enabled is
-# disabled, or if there not a corresponding long parameter with this tweet.
-
-# =item long
-
-# Optional. The location's longitude that this tweet refers to.  The valid ranges
-# for longitude is -180.0 to +180.0 (East is positive) inclusive.  This parameter
-# will be ignored if outside that range, if it is not a number, if geo_enabled is
-# disabled, or if there not a corresponding lat parameter with this tweet.
-
-# =item place_id
-
-# Optional. The place to attach to this status update.  Valid place_ids can be
-# found by querying C<reverse_geocode>.
-
-# =item display_coordinates
-
-# Optional. By default, geo-tweets will have their coordinates exposed in the
-# status object (to remain backwards compatible with existing API applications).
-# To turn off the display of the precise latitude and longitude (but keep the
-# contextual location information), pass C<display_coordinates => 0> on the
-# status update.
-
-# =back
-
-# EOT
-
-# );
-
-# twitter_api_method destroy_status => (
-#     description => <<'',
-# Destroys the status specified by the required ID parameter.  The
-# authenticating user must be the author of the specified status.
-
-#     path     => 'statuses/destroy/:id',
-#     method   => 'POST',
-#     params   => [qw/id trim_user include_entities/],
-#     booleans => [qw/trim_user include_entities/],
-#     required => [qw/id/],
-#     returns  => 'Status',
-# );
 
 # twitter_api_method friends => (
 #     deprecated  => 1,
@@ -339,141 +1530,7 @@ Not all Tweets will be indexed or made available via the search interface.
 #     returns  => 'HashRef|ArrayRef[User]',
 # );
 
-# twitter_api_method show_user => (
-#     description => <<'',
-# Returns extended information of a given user, specified by ID or screen
-# name as per the required id parameter.  This information includes
-# design settings, so third party developers can theme their widgets
-# according to a given user's preferences. You must be properly
-# authenticated to request the page of a protected user.
-
-#     path     => 'users/show/:id',
-#     method   => 'GET',
-#     params   => [qw/id screen_name include_entities/],
-#     booleans => [qw/include_entities/],
-#     required => [qw/id/],
-#     returns  => 'ExtendedUser',
-# );
-
-# twitter_api_method contributees => (
-#     path        => 'users/contributees',
-#     method      => 'GET',
-#     params      => [qw/user_id screen_name include_entities skip_satus/],
-#     required    => [],
-#     booleans    => [qw/include_entities skip_satus/],
-#     returns     => 'ArrayRef[User]',
-#     description => <<'',
-# Returns an array of users that the specified user can contribute to.
-
-# );
-
-# twitter_api_method contributors => (
-#     path        => 'users/contributors',
-#     method      => 'GET',
-#     params      => [qw/user_id screen_name include_entities skip_satus/],
-#     required    => [],
-#     booleans    => [qw/include_entities skip_satus/],
-#     returns     => 'ArrayRef[User]',
-#     description => <<'',
-# Returns an array of users who can contribute to the specified account.
-
-# );
-
-# twitter_api_method direct_messages => (
-#     description => <<'',
-# Returns a list of the 20 most recent direct messages sent to the authenticating
 # user including detailed information about the sending and recipient users.
-
-#     path     => 'direct_messages',
-#     method   => 'GET',
-#     params   => [qw/since_id max_id count page include_entities/],
-#     required => [qw/include_entities/],
-#     returns  => 'ArrayRef[DirectMessage]',
-# );
-
-# twitter_api_method sent_direct_messages => (
-#     description => <<'',
-# Returns a list of the 20 most recent direct messages sent by the authenticating
-# user including detailed information about the sending and recipient users.
-
-#     path     => 'direct_messages/sent',
-#     method   => 'GET',
-#     params   => [qw/since_id max_id page count include_entities/],
-#     booleans => [qw/include_entities/],
-#     required => [qw//],
-#     returns  => 'ArrayRef[DirectMessage]',
-# );
-
-# twitter_api_method new_direct_message => (
-#     description => <<'',
-# Sends a new direct message to the specified user from the authenticating user.
-# Requires both the user and text parameters.  Returns the sent message when
-# successful.  In order to support numeric screen names, the C<screen_name> or
-# C<user_id> parameters may be used instead of C<user>.
-
-#     path     => 'direct_messages/new',
-#     method   => 'POST',
-#     params   => [qw/user text screen_name user_id include_entities/],
-#     booleans => [qw/include_entities/],
-#     required => [qw/user text/],
-#     returns  => 'DirectMessage',
-# );
-
-# twitter_api_method destroy_direct_message => (
-#     description => <<'',
-# Destroys the direct message specified in the required ID parameter.
-# The authenticating user must be the recipient of the specified direct
-# message.
-
-#     path     => 'direct_messages/destroy/:id',
-#     method   => 'POST',
-#     params   => [qw/id include_entities/],
-#     booleans => [qw/include_entities/],
-#     required => [qw/id/],
-#     returns  => 'DirectMessage',
-# );
-
-# twitter_api_method show_friendship => (
-#     description => <<'',
-# Returns detailed information about the relationship between two users.
-
-#     aliases  => [qw/show_relationship/],
-#     path     => 'friendships/show',
-#     method   => 'GET',
-#     params   => [qw/source_id source_screen_name target_id target_id_name/],
-#     required => [qw/id/],
-#     returns  => 'Relationship',
-# );
-
-# twitter_api_method create_friend => (
-#     description => <<'',
-# Befriends the user specified in the ID parameter as the authenticating user.
-# Returns the befriended user when successful.  Returns a string describing the
-# failure condition when unsuccessful.
-
-#     aliases  => [qw/follow_new/],
-#     path     => 'friendships/create/:id',
-#     method   => 'POST',
-#     params   => [qw/id user_id screen_name follow include_entities/],
-#     booleans => [qw/include_entities follow/],
-#     required => [qw/id/],
-#     returns  => 'BasicUser',
-# );
-
-# twitter_api_method destroy_friend => (
-#     description => <<'',
-# Discontinues friendship with the user specified in the ID parameter as the
-# authenticating user.  Returns the un-friended user when successful.
-# Returns a string describing the failure condition when unsuccessful.
-
-#     aliases  => [qw/unfollow/],
-#     path     => 'friendships/destroy/:id',
-#     method   => 'POST',
-#     params   => [qw/id user_id screen_name include_entities/],
-#     booleans => [qw/include_entities/],
-#     required => [qw/id/],
-#     returns  => 'BasicUser',
-# );
 
 # twitter_api_method friendship_exists => (
 #     aliases     => [qw/relationship_exists follows/], # Net::Twitter
@@ -513,67 +1570,6 @@ Not all Tweets will be indexed or made available via the search interface.
 #     returns  => 'ArrayRef[UserIDs]',
 # );
 
-# twitter_api_method friends_ids => (
-#     description => <<'EOT',
-# Returns a reference to an array of numeric IDs for every user followed by the
-# specified user. The order of the IDs is reverse chronological.
-
-# Use the optional C<cursor> parameter to retrieve IDs in pages of 5000.  When
-# the C<cursor> parameter is used, the return value is a reference to a hash with
-# keys C<previous_cursor>, C<next_cursor>, and C<ids>.  The value of C<ids> is a
-# reference to an array of IDS of the user's friends. Set the optional C<cursor>
-# parameter to -1 to get the first page of IDs.  Set it to the prior return's
-# value of C<previous_cursor> or C<next_cursor> to page forward or backwards.
-# When there are no prior pages, the value of C<previous_cursor> will be 0.  When
-# there are no subsequent pages, the value of C<next_cursor> will be 0.
-# EOT
-
-#     aliases  => [qw/following_ids/],
-#     path     => 'friends/ids/:id',
-#     method   => 'GET',
-#     params   => [qw/id user_id screen_name cursor/],
-#     required => [qw/id/],
-#     returns  => 'HashRef|ArrayRef[Int]',
-# );
-
-# twitter_api_method followers_ids => (
-#     description => <<'EOT',
-# Returns a reference to an array of numeric IDs for every user following the
-# specified user. The order of the IDs may change from call to call. To obtain
-# the screen names, pass the arrayref to L</lookup_users>.
-
-# Use the optional C<cursor> parameter to retrieve IDs in pages of 5000.  When
-# the C<cursor> parameter is used, the return value is a reference to a hash with
-# keys C<previous_cursor>, C<next_cursor>, and C<ids>.  The value of C<ids> is a
-# reference to an array of IDS of the user's followers. Set the optional C<cursor>
-# parameter to -1 to get the first page of IDs.  Set it to the prior return's
-# value of C<previous_cursor> or C<next_cursor> to page forward or backwards.
-# When there are no prior pages, the value of C<previous_cursor> will be 0.  When
-# there are no subsequent pages, the value of C<next_cursor> will be 0.
-# EOT
-
-#     path     => 'followers/ids/:id',
-#     method   => 'GET',
-#     params   => [qw/id user_id screen_name cursor/],
-#     required => [qw/id/],
-#     returns  => 'HashRef|ArrayRef[Int]',
-# );
-
-# twitter_api_method verify_credentials => (
-#     description => <<'',
-# Returns an HTTP 200 OK response code and a representation of the
-# requesting user if authentication was successful; returns a 401 status
-# code and an error message if not.  Use this method to test if supplied
-# user credentials are valid.
-
-#     path     => 'account/verify_credentials',
-#     method   => 'GET',
-#     params   => [qw/include_entities/],
-#     booleans => [qw/include_entities/],
-#     required => [qw//],
-#     returns  => 'ExtendedUser',
-# );
-
 # twitter_api_method end_session => (
 #     description => <<'',
 # Ends the session of the authenticating user, returning a null cookie.
@@ -599,158 +1595,6 @@ Not all Tweets will be indexed or made available via the search interface.
 #     params   => [qw/location/],
 #     required => [qw/location/],
 #     returns  => 'BasicUser',
-# );
-
-# twitter_api_method update_delivery_device => (
-#     description => <<'',
-# Sets which device Twitter delivers updates to for the authenticating
-# user.  Sending none as the device parameter will disable IM or SMS
-# updates.
-
-#     path     => 'account/update_delivery_device',
-#     method   => 'POST',
-#     params   => [qw/device/],
-#     required => [qw/device/],
-#     returns  => 'BasicUser',
-# );
-
-# twitter_api_method update_profile_colors => (
-#     description => <<'',
-# Sets one or more hex values that control the color scheme of the
-# authenticating user's profile page on twitter.com.  These values are
-# also returned in the /users/show API method.
-
-#     path     => 'account/update_profile_colors',
-#     method   => 'POST',
-#     params   => [qw/
-#         profile_background_color
-#         profile_text_color
-#         profile_link_color
-#         profile_sidebar_fill_color
-#         profile_sidebar_border_color
-#     /],
-#     required => [qw//],
-#     returns  => 'ExtendedUser',
-# );
-
-# twitter_api_method update_profile_image => (
-#     description => <<'EOT',
-# Updates the authenticating user's profile image.  The C<image> parameter is an
-# arrayref with the following interpretation:
-
-#   [ $file ]
-#   [ $file, $filename ]
-#   [ $file, $filename, Content_Type => $mime_type ]
-#   [ undef, $filename, Content_Type => $mime_type, Content => $raw_image_data ]
-
-# The first value of the array (C<$file>) is the name of a file to open.  The
-# second value (C<$filename>) is the name given to Twitter for the file.  If
-# C<$filename> is not provided, the basename portion of C<$file> is used.  If
-# C<$mime_type> is not provided, it will be provided automatically using
-# L<LWP::MediaTypes::guess_media_type()>.
-
-# C<$raw_image_data> can be provided, rather than opening a file, by passing
-# C<undef> as the first array value.
-# EOT
-
-#     path     => 'account/update_profile_image',
-#     method   => 'POST',
-#     params   => [qw/image/],
-#     required => [qw/image/],
-#     returns  => 'ExtendedUser',
-# );
-
-# twitter_api_method update_profile_background_image => (
-#     description => <<'',
-# Updates the authenticating user's profile background image. The C<image>
-# parameter must be an arrayref with the same interpretation as the C<image>
-# parameter in the C<update_profile_image> method.  The C<use> parameter allows
-# you to specify whether to use the  uploaded profile background or not. See
-# that method's documentation for details.
-
-#     path     => 'account/update_profile_background_image',
-#     method   => 'POST',
-#     params   => [qw/image use/],
-#     required => [qw/image/],
-#     booleans => [qw/use/],
-#     returns  => 'ExtendedUser',
-# );
-
-twitter_api_method rate_limit_status => (
-    description => <<'EOT',
-Returns the current rate limits for methods belonging to the specified 
-resource families.
-
-Each 1.1 API resource belongs to a "resource family" which is indicated 
-in its method documentation. You can typically determine a method's resource 
-family from the first component of the path after the resource version.
-
-This method responds with a map of methods belonging to the families 
-specified by the resources parameter, the current remaining uses for each of 
-those resources within the current rate limiting window, and its expiration 
-time in epoch time. It also includes a rate_limit_context field that 
-indicates the current access token context.
-EOT
-
-    path     => 'application/rate_limit_status',
-    method   => 'GET',
-    params   => [qw/resources/],
-    required => [qw//],
-    returns  => 'HashRef',
-);
-
-# twitter_api_method update_profile => (
-#     description => <<'',
-# Sets values that users are able to set under the "Account" tab of their
-# settings page. Only the parameters specified will be updated; to only
-# update the "name" attribute, for example, only include that parameter
-# in your request.
-
-#     path     => 'account/update_profile',
-#     method   => 'POST',
-#     params   => [qw/ name email url location description include_entities/],
-#     booleans => [qw/include_entities/],
-#     required => [qw//],
-#     returns  => 'ExtendedUser',
-# );
-
-# twitter_api_method favorites => (
-#     description => <<'',
-# Returns the 20 most recent favorite statuses for the authenticating
-# user or user specified by the ID parameter.
-
-#     path     => 'favorites/:id',
-#     method   => 'GET',
-#     params   => [qw/id page include_entities/],
-#     booleans => [qw/include_entities/],
-#     required => [qw//],
-#     returns  => 'ArrayRef[Status]',
-# );
-
-# twitter_api_method create_favorite => (
-#     description => <<'',
-# Favorites the status specified in the ID parameter as the
-# authenticating user.  Returns the favorite status when successful.
-
-#     path     => 'favorites/create/:id',
-#     method   => 'POST',
-#     params   => [qw/id include_entities/],
-#     booleans => [qw/include_entities/],
-#     required => [qw/id/],
-#     returns  => 'Status',
-# );
-
-# twitter_api_method destroy_favorite => (
-#     description => <<'',
-# Un-favorites the status specified in the ID parameter as the
-# authenticating user.  Returns the un-favorited status.
-
-#     path     => 'favorites/destroy/:id',
-#     method   => 'POST',
-#     params   => [qw/id include_entities/],
-#     booleans => [qw/include_entities/],
-#     required => [qw/id/],
-#     returns  => 'Status',
 # );
 
 # twitter_api_method enable_notifications  => (
@@ -779,33 +1623,6 @@ EOT
 #     returns  => 'BasicUser',
 # );
 
-# twitter_api_method create_block => (
-#     description => <<'',
-# Blocks the user specified in the ID parameter as the authenticating user.
-# Returns the blocked user when successful.  You can find out more about
-# blocking in the Twitter Support Knowledge Base.
-
-#     path     => 'blocks/create/:id',
-#     method   => 'POST',
-#     params   => [qw/id user_id screen_name include_entities/],
-#     booleans => [qw/include_entities/],    
-#     required => [qw/id/],
-#     returns  => 'BasicUser',
-# );
-
-
-# twitter_api_method destroy_block => (
-#     description => <<'',
-# Un-blocks the user specified in the ID parameter as the authenticating user.
-# Returns the un-blocked user when successful.
-
-#     path     => 'blocks/destroy/:id',
-#     method   => 'POST',
-#     params   => [qw/id user_id screen_name/],
-#     booleans => [qw/include_entities/],
-#     required => [qw/id/],
-#     returns  => 'BasicUser',
-# );
 
 
 # twitter_api_method block_exists => (
@@ -868,147 +1685,6 @@ EOT
 #     params   => [qw//],
 #     required => [qw//],
 #     returns  => 'Str',
-# );
-
-# twitter_api_method get_configuration => (
-#     path        => 'help/configuration',
-#     method      => 'GET',
-#     params      => [],
-#     required    => [],
-#     returns     => 'HashRef',
-#     description => <<'EOT',
-# Returns the current configuration used by Twitter including twitter.com slugs
-# which are not usernames, maximum photo resolutions, and t.co URL lengths.
-
-# It is recommended applications request this endpoint when they are loaded, but
-# no more than once a day.
-# EOT
-
-# );
-
-# twitter_api_method get_languages => (
-#     path        => 'help/languages',
-#     method      => 'GET',
-#     params      => [],
-#     required    => [],
-#     returns     => 'ArrayRef[Lanugage]',
-#     description => <<'',
-# Returns the list of languages supported by Twitter along with their ISO 639-1
-# code. The ISO 639-1 code is the two letter value to use if you include lang
-# with any of your requests.
-
-# );
-
-# twitter_api_method saved_searches => (
-#     description => <<'',
-# Returns the authenticated user's saved search queries.
-
-#     path     => 'saved_searches',
-#     method   => 'GET',
-#     params   => [],
-#     required => [],
-#     returns  => 'ArrayRef[SavedSearch]',
-# );
-
-# twitter_api_method show_saved_search => (
-#     description => <<'',
-# Retrieve the data for a saved search, by C<id>, owned by the authenticating user.
-
-#     path     => 'saved_searches/show/:id',
-#     method   => 'GET',
-#     params   => [qw/id/],
-#     required => [qw/id/],
-#     returns  => 'SavedSearch',
-# );
-
-# twitter_api_method create_saved_search => (
-#     description => <<'',
-# Creates a saved search for the authenticated user.
-
-#     path     => 'saved_searches/create',
-#     method   => 'POST',
-#     params   => [qw/query/],
-#     required => [qw/query/],
-#     returns  => 'SavedSearch',
-# );
-
-# twitter_api_method destroy_saved_search => (
-#     description => <<'',
-# Destroys a saved search. The search, specified by C<id>, must be owned
-# by the authenticating user.
-
-#     path     => 'saved_searches/destroy/:id',
-#     method   => 'POST',
-#     params   => [qw/id/],
-#     required => [qw/id/],
-#     returns  => 'SavedSearch',
-# );
-
-# twitter_api_method report_spam => (
-#     description => <<'',
-# The user specified in the id is blocked by the authenticated user and reported as a spammer.
-
-#     path     => 'report_spam',
-#     method   => 'POST',
-#     params   => [qw/id user_id screen_name include_entities/],
-#     booleans => [qw/include_entities/],
-#     required => [qw/id/],
-#     returns  => 'User',
-# );
-
-# twitter_api_method users_search => (
-#     aliases     => [qw/find_people search_users/],
-#     path        => 'users/search',
-#     method      => 'GET',
-#     params      => [qw/q per_page page include_entities/],
-#     booleans    => [qw/include_entities/],
-#     required    => [qw/q/],
-#     returns     => 'ArrayRef[Users]',
-#     description => <<'',
-# Run a search for users similar to Find People button on Twitter.com; the same
-# results returned by people search on Twitter.com will be returned by using this
-# API (about being listed in the People Search).  It is only possible to retrieve
-# the first 1000 matches from this API.
-
-# );
-
-# twitter_api_method trends_available => (
-#     path        => 'trends/available',
-#     method      => 'GET',
-#     params      => [qw/lat long/],
-#     required    => [],
-#     authenticate => 0,
-#     returns     => 'ArrayRef[Location]',
-#     description => <<EOT,
-# Returns the locations with trending topic information. The response is an
-# array of "locations" that encode the location's WOEID (a Yahoo!  Where On Earth
-# ID L<http://developer.yahoo.com/geo/geoplanet/>) and some other human-readable
-# information such as a the location's canonical name and country.
-
-# When the optional C<lat> and C<long> parameters are passed, the available trend
-# locations are sorted by distance from that location, nearest to farthest.
-
-# Use the WOEID returned in the location object to query trends for a specific
-# location.
-# EOT
-# );
-
-# twitter_api_method trends_location => (
-#     path        => 'trends/:woeid',
-#     method      => 'GET',
-#     params      => [qw/woeid/],
-#     required    => [qw/woeid/],
-#     returns     => 'ArrayRef[Trend]',
-#     authenticate => 0,
-#     description => <<'',
-# Returns the top 10 trending topics for a specific location. The response is an
-# array of "trend" objects that encode the name of the trending topic, the query
-# parameter that can be used to search for the topic on Search, and the direct
-# URL that can be issued against Search.  This information is cached for five
-# minutes, and therefore users are discouraged from querying these endpoints
-# faster than once every five minutes.  Global trends information is also
-# available from this API by using a WOEID of 1.
-
 # );
 
 # twitter_api_method trends => (
@@ -1082,171 +1758,6 @@ EOT
 #     returns  => 'HashRef',
 # );
 
-# twitter_api_method reverse_geocode => (
-#     path        => 'geo/reverse_geocode',
-#     method      => 'GET',
-#     params      => [qw/lat long accuracy granularity max_results/],
-#     required    => [qw/lat long/],
-#     returns     => 'HashRef',
-#     description => <<'EOT',
-
-# Search for places (cities and neighborhoods) that can be attached to a
-# statuses/update.  Given a latitude and a longitude, return a list of all the
-# valid places that can be used as a place_id when updating a status.
-# Conceptually, a query can be made from the user's location, retrieve a list of
-# places, have the user validate the location he or she is at, and then send the
-# ID of this location up with a call to statuses/update.
-
-# There are multiple granularities of places that can be returned --
-# "neighborhoods", "cities", etc.  At this time, only United States data is
-# available through this method.
-
-# =over 4
-
-# =item lat
-
-# Required.  The latitude to query about.  Valid ranges are -90.0 to +90.0 (North
-# is positive) inclusive.
-
-# =item long
-
-# Required. The longitude to query about.  Valid ranges are -180.0 to +180.0
-# (East is positive) inclusive.
-
-# =item accuracy
-
-# Optional. A hint on the "region" in which to search.  If a number, then this is
-# a radius in meters, but it can also take a string that is suffixed with ft to
-# specify feet.  If this is not passed in, then it is assumed to be 0m.  If
-# coming from a device, in practice, this value is whatever accuracy the device
-# has measuring its location (whether it be coming from a GPS, WiFi
-# triangulation, etc.).
-
-# =item granularity
-
-# Optional.  The minimal granularity of data to return.  If this is not passed
-# in, then C<neighborhood> is assumed.  C<city> can also be passed.
-
-# =item max_results
-
-# Optional.  A hint as to the number of results to return.  This does not
-# guarantee that the number of results returned will equal max_results, but
-# instead informs how many "nearby" results to return.  Ideally, only pass in the
-# number of places you intend to display to the user here.
-
-# =back
-
-# EOT
-# );
-
-# twitter_api_method geo_id => (
-#     path => 'geo/id/:id',
-#     method => 'GET',
-#     params => [qw/id/],
-#     required => [qw/id/],
-#     returns  => 'HashRef',
-#     description => <<'EOT',
-# Returns details of a place returned from the C<reverse_geocode> method.
-# EOT
-# );
-
-# twitter_api_method geo_search => (
-#     path        => 'geo/search',
-#     method      => 'GET',
-#     params      => [qw/
-#         lat long query ip granularity accuracy max_results
-#         contained_within attribute:street_address callback
-#     /],
-#     required    => [],
-#     returns     => 'HashRef',
-#     description => <<'EOT',
-# Search for places that can be attached to a statuses/update. Given a latitude
-# and a longitude pair, an IP address, or a name, this request will return a list
-# of all the valid places that can be used as the place_id when updating a
-# status.
-
-# Conceptually, a query can be made from the user's location, retrieve a list of
-# places, have the user validate the location he or she is at, and then send the
-# ID of this location with a call to statuses/update.
-
-# This is the recommended method to use find places that can be attached to
-# statuses/update. Unlike geo/reverse_geocode which provides raw data access,
-# this endpoint can potentially re-order places with regards to the user who
-# is authenticated. This approach is also preferred for interactive place
-# matching with the user.
-# EOT
-
-# );
-
-# twitter_api_method similar_places => (
-#     path        => 'geo/similar_places',
-#     method      => 'GET',
-#     params      => [qw/lat long name contained_within attribute:street_address callback/],
-#     required    => [qw/lat long name/],
-#     returns     => 'HashRef',
-#     description => <<'EOT',
-# Locates places near the given coordinates which are similar in name.
-
-# Conceptually you would use this method to get a list of known places to choose
-# from first. Then, if the desired place doesn't exist, make a request to
-# C<add_place> to create a new one.
-
-# The token contained in the response is the token needed to be able to create a
-# new place.
-# EOT
-
-# );
-
-# twitter_api_method add_place => (
-#     path        => 'geo/place',
-#     method      => 'POST',
-#     params      => [qw/name contained_within token lat long attribute:street_address callback/],
-#     required    => [qw/name contained_within token lat long/],
-#     returns     => 'Place',
-#     description => <<'EOT',
-# Creates a new place object at the given latitude and longitude.
-
-# Before creating a place you need to query C<similar_places> with the latitude,
-# longitude and name of the place you wish to create. The query will return an
-# array of places which are similar to the one you wish to create, and a token.
-# If the place you wish to create isn't in the returned array you can use the
-# token with this method to create a new one.
-# EOT
-
-# );
-
-# twitter_api_method lookup_users => (
-#     path => 'users/lookup',
-#     method => 'GET',
-#     params => [qw/user_id screen_name include_entities/],
-#     booleans => [qw/include_entities/],
-#     required => [],
-#     returns => 'ArrayRef[User]',
-#     description => <<'EOT'
-# Return up to 100 users worth of extended information, specified by either ID,
-# screen name, or combination of the two. The author's most recent status (if the
-# authenticating user has permission) will be returned inline.  This method is
-# rate limited to 1000 calls per hour.
-
-# This method will accept user IDs or screen names as either a comma delimited
-# string, or as an ARRAY ref.  It will also accept arguments in the normal
-# HASHREF form or as a simple list of named arguments.  I.e., any of the
-# following forms are acceptable:
-
-#     $nt->lookup_users({ user_id => '1234,6543,3333' });
-#     $nt->lookup_users(user_id => '1234,6543,3333');
-#     $nt->lookup_users({ user_id => [ 1234, 6543, 3333 ] });
-#     $nt->lookup_users({ screen_name => 'fred,barney,wilma' });
-#     $nt->lookup_users(screen_name => ['fred', 'barney', 'wilma']);
-
-#     $nt->lookup_users(
-#         screen_name => ['fred', 'barney' ],
-#         user_id     => '4321,6789',
-#     );
-
-# EOT
-# );
-
 # twitter_api_method retweeted_by => (
 #     path => 'statuses/:id/retweeted_by',
 #     method => 'GET',
@@ -1271,31 +1782,6 @@ EOT
 
 # );
 
-# twitter_api_method friendships_incoming => (
-#     path => 'friendships/incoming',
-#     method => 'GET',
-#     params => [qw/cursor/],
-#     required => [qw/cursor/],
-#     returns  => 'HashRef',
-#     description => <<'',
-# Returns an HASH ref with an array of numeric IDs in the C<ids> element for
-# every user who has a pending request to follow the authenticating user.
-
-# );
-
-# twitter_api_method friendships_outgoing => (
-#     path => 'friendships/outgoing',
-#     method => 'GET',
-#     params => [qw/cursor/],
-#     required => [qw/cursor/],
-#     returns  => 'HashRef',
-#     description => <<'',
-# Returns an HASH ref with an array of numeric IDs in the C<ids> element for
-# every protected user for whom the authenticating user has a pending follow
-# request.
-
-# );
-
 # # new in 3.17001 2010-10-19
 
 # twitter_api_method account_totals => (
@@ -1309,61 +1795,6 @@ EOT
 # and favorites of the authenticating user.
 
 # );
-
-# twitter_api_method account_settings => (
-#     path => 'account/settings',
-#     method      => 'GET',
-#     params      => [],
-#     required    => [],
-#     returns     => 'HashRef',
-#     description => <<''
-# Returns the current trend, geo and sleep time information for the
-# authenticating user.
-
-# );
-
-# twitter_api_method suggestion_categories => (
-#     path        => 'users/suggestions',
-#     method      => 'GET',
-#     params      => [],
-#     required    => [],
-#     returns     => 'ArrayRef',
-#     description => <<''
-# Returns the list of suggested user categories. The category slug can be used in
-# the C<user_suggestions> API method get the users in that category .  Does not
-# require authentication.
-
-# );
-
-# twitter_api_method user_suggestions => (
-#     aliases     => [qw/follow_suggestions/],
-#     path        => 'users/suggestions/:category/members',
-#     method      => 'GET',
-#     params      => [qw/category lang/],
-#     required    => [qw/category/],
-#     returns     => 'ArrayRef',
-#     description => <<''
-# Access the users in a given category of the Twitter suggested user list and
-# return their most recent status if they are not a protected user. Currently
-# supported values for optional parameter C<lang> are C<en>, C<fr>, C<de>, C<es>,
-# C<it>.  Does not require authentication.
-
-# );
-
-# twitter_api_method show_direct_message => (
-#     path => 'direct_messages/show/:id',
-#     method      => 'GET',
-#     params      => [qw/id include_entities/],
-#     booleans => [qw/include_entities/],
-#     required    => [qw/id/],
-#     returns     => 'HashRef',
-#     description => <<''
-# Returns a single direct message, specified by an id parameter. Like
-# the C<direct_messages> request, this method will include the
-# user objects of the sender and recipient.  Requires authentication.
-
-# );
-
 # twitter_api_method retweeted_to_user => (
 #     path => 'statuses/retweeted_to_user',
 #     method      => 'GET',
@@ -1393,33 +1824,6 @@ EOT
 
 # );
 
-# twitter_api_method lookup_friendships => (
-#     path        => 'friendships/lookup',
-#     method      => 'GET',
-#     params      => [qw/user_id screen_name/],
-#     required    => [],
-#     returns     => 'ArrayRef',
-#     description => <<''
-# Returns the relationship of the authenticating user to the comma separated list
-# or ARRAY ref of up to 100 screen_names or user_ids provided. Values for
-# connections can be: following, following_requested, followed_by, none.
-# Requires authentication.
-
-# );
-
-# twitter_api_method update_friendship => (
-#     path        => 'friendships/update',
-#     method      => 'POST',
-#     params      => [qw/id user_id screen_name device retweets/],
-#     required    => [qw/id/],
-#     booleans    => [qw/device retweets/],
-#     returns     => 'HashRef',
-#     description => <<''
-# Allows you enable or disable retweets and device notifications from the
-# specified user. All other values are assumed to be false.  Requires
-# authentication.
-
-# );
 
 # twitter_api_method related_results => (
 #     path        => 'related_results/show/:id',
@@ -1435,311 +1839,6 @@ EOT
 
 # );
 
-# ### Lists ###
-
-# twitter_api_method all_subscriptions => (
-#     path        => 'lists/all',
-#     method      => 'GET',
-#     params      => [qw/user_id screen_name count cursor/],
-#     required    => [],
-#     returns     => 'ArrayRef[List]',
-#     aliases     => [qw/all_lists list_subscriptions/],
-#     description => <<'',
-# Returns all lists the authenticating or specified user subscribes to, including
-# their own. The user is specified using the user_id or screen_name parameters.
-# If no user is given, the authenticating user is used.
-
-# );
-
-# twitter_api_method list_statuses => (
-#     path        => 'lists/statuses',
-#     method      => 'GET',
-#     params      => [qw/
-#         list_id slug owner_screen_name owner_id since_id max_id per_page page
-#         include_entities include_rts
-#     /],
-#     required    => [],
-#     booleans    => [qw/include_entities include_rts/],
-#     returns     => 'ArrayRef[Status]',
-#     description => <<'',
-# Returns tweet timeline for members of the specified list. Historically,
-# retweets were not available in list timeline responses but you can now use the
-# include_rts=true parameter to additionally receive retweet objects.
-
-# );
-
-# twitter_api_method delete_list_member => (
-#     path        => 'lists/members/destroy',
-#     method      => 'POST',
-#     params      => [qw/list_id slug user_id screen_name owner_screen_name owner_id/],
-#     required    => [],
-#     returns     => 'User',
-#     aliases     => [qw/remove_list_member/],
-#     description => <<'',
-# Removes the specified member from the list. The authenticated user must be the
-# list's owner to remove members from the list.
-
-# );
-
-# twitter_api_method list_memberships => (
-#     path        => 'lists/memberships',
-#     method      => 'GET',
-#     params      => [qw/user_id screen_name cursor filter_to_owned_lists/],
-#     required    => [],
-#     booleans    => [qw/filter_to_owned_lists/],
-#     returns     => 'Hashref',
-#     description => <<'',
-# Returns the lists the specified user has been added to. If user_id or
-# screen_name are not provided the memberships for the authenticating user are
-# returned.
-
-# );
-
-# twitter_api_method list_subscribers => (
-#     path        => 'lists/subscribers',
-#     method      => 'GET',
-#     params      => [qw/list_id slug owner_screen_name owner_id cursor include_entities skip_status/],
-#     required    => [],
-#     booleans    => [qw/include_entities skip_status/],
-#     returns     => 'Hashref',
-#     description => <<'',
-# Returns the subscribers of the specified list. Private list subscribers will
-# only be shown if the authenticated user owns the specified list.
-
-# );
-
-# twitter_api_method subscribe_list => (
-#     path        => 'lists/subscribers/create',
-#     method      => 'POST',
-#     params      => [qw/owner_screen_name owner_id list_id slug/],
-#     required    => [],
-#     returns     => 'List',
-#     description => <<'',
-# Subscribes the authenticated user to the specified list.
-
-# );
-
-# twitter_api_method is_list_subscriber => (
-#     path        => 'lists/subscribers/show',
-#     method      => 'GET',
-#     params      => [qw/
-#         owner_screen_name owner_id list_id slug user_id screen_name
-#         include_entities skip_status
-#     /],
-#     required    => [],
-#     booleans    => [qw/include_entities skip_status/],
-#     returns     => 'Maybe[User]',
-#     aliases     => [qw/is_subscribed_list/],
-#     description => <<'',
-# Check if the specified user is a subscriber of the specified list. Returns the
-# user or undef.
-
-# );
-
-# around [qw/is_list_subscriber is_subscribed_list/] => sub {
-#     my $orig = shift;
-#     my $self = shift;
-
-#     $self->_user_or_undef($orig, 'subscriber', @_);
-# };
-
-# twitter_api_method unsubscribe_list => (
-#     path        => 'lists/subscribers/destroy',
-#     method      => 'POST',
-#     params      => [qw/list_id slug owner_screen_name owner_id/],
-#     required    => [],
-#     returns     => 'List',
-#     description => <<'',
-# Unsubscribes the authenticated user from the specified list.
-
-# );
-
-# twitter_api_method members_create_all => (
-#     path        => 'lists/members/create_all',
-#     method      => 'POST',
-#     params      => [qw/list_id slug owner_screen_name owner_id/],
-#     required    => [],
-#     returns     => 'List',
-#     aliases     => [qw/add_list_members/],
-#     description => <<'',
-# Adds multiple members to a list, by specifying a reference to an array or a
-# comma-separated list of member ids or screen names. The authenticated user must
-# own the list to be able to add members to it. Note that lists can't have more
-# than 500 members, and you are limited to adding up to 100 members to a list at
-# a time with this method.
-
-# );
-
-# twitter_api_method members_destroy_all => (
-#     path        => 'lists/members/destroy_all',
-#     method      => 'POST',
-#     params      => [qw/list_id slug user_id screen_name owner_screen_name owner_id/],
-#     required    => [],
-#     returns     => 'List',
-#     aliases     => [qw/remove_list_members/],
-#     description => <<'EOT',
-# Removes multiple members from a list, by specifying a reference to an array of
-# member ids or screen names, or a string of comma separated user ids or screen
-# names.  The authenticated user must own the list to be able to remove members
-# from it. Note that lists can't have more than 500 members, and you are limited
-# to removing up to 100 members to a list at a time with this method.
-
-# Please note that there can be issues with lists that rapidly remove and add
-# memberships. Take care when using these methods such that you are not too
-# rapidly switching between removals and adds on the same list.
-
-# EOT
-# );
-
-# twitter_api_method is_list_member => (
-#     path        => 'lists/members/show',
-#     method      => 'GET',
-#     params      => [qw/
-#         owner_screen_name owner_id list_id slug user_id screen_name
-#         include_entities skip_status
-#     /],
-#     required    => [],
-#     booleans    => [qw/include_entities skip_status/],
-#     returns     => 'Maybe[User]',
-#     description => <<'',
-# Check if the specified user is a member of the specified list. Returns the user or undef.
-
-# );
-
-# around is_list_member => sub {
-#     my $orig = shift;
-#     my $self = shift;
-
-#     $self->_user_or_undef($orig, 'member', @_);
-# };
-
-# twitter_api_method list_members => (
-#     path        => 'lists/members',
-#     method      => 'GET',
-#     params      => [qw/
-#         list_id slug owner_screen_name owner_id cursor
-#         include_entities skip_status
-#     /],
-#     required    => [],
-#     booleans    => [qw/include_entities skip_status/],
-#     returns     => 'Hashref',
-#     description => <<'',
-# Returns the members of the specified list. Private list members will only be
-# shown if the authenticated user owns the specified list.
-
-# );
-
-# twitter_api_method add_list_member => (
-#     path        => 'lists/members/create',
-#     method      => 'POST',
-#     params      => [qw/list_id slug user_id screen_name owner_screen_name owner_id/],
-#     required    => [],
-#     returns     => 'User',
-#     description => <<'',
-# Add a member to a list. The authenticated user must own the list to be able to
-# add members to it. Note that lists can't have more than 500 members.
-
-# );
-
-# twitter_api_method delete_list => (
-#     path        => 'lists/destroy',
-#     method      => 'POST',
-#     params      => [qw/owner_screen_name owner_id list_id slug/],
-#     required    => [],
-#     returns     => 'List',
-#     description => <<'',
-# Deletes the specified list. The authenticated user must own the list to be able
-# to destroy it.
-
-# );
-
-# twitter_api_method update_list => (
-#     path        => 'lists/update',
-#     method      => 'POST',
-#     params      => [qw/list_id slug name mode description owner_screen_name owner_id/],
-#     required    => [],
-#     returns     => 'List',
-#     description => <<'',
-# Updates the specified list. The authenticated user must own the list to be able
-# to update it.
-
-# );
-
-# twitter_api_method create_list => (
-#     path        => 'lists/create',
-#     method      => 'POST',
-#     params      => [qw/list_id slug name mode description owner_screen_name owner_id/],
-#     required    => [],
-#     returns     => 'List',
-#     description => <<'',
-# Creates a new list for the authenticated user. Note that you can't create more
-# than 20 lists per account.
-
-# );
-
-# twitter_api_method get_lists => (
-#     path        => 'lists',
-#     method      => 'GET',
-#     params      => [qw/user_id screen_name cursor/],
-#     required    => [],
-#     returns     => 'Hashref',
-#     aliases     => [qw/list_lists/],
-#     description => <<'',
-# Returns the lists of the specified (or authenticated) user. Private lists will
-# be included if the authenticated user is the same as the user whose lists are
-# being returned.
-
-# );
-
-# twitter_api_method get_list => (
-#     path        => 'lists/show',
-#     method      => 'GET',
-#     params      => [qw/list_id slug owner_screen_name owner_id/],
-#     required    => [],
-#     returns     => 'List',
-#     description => <<'',
-# Returns the specified list. Private lists will only be shown if the
-# authenticated user owns the specified list.
-
-# );
-
-# twitter_api_method subscriptions => (
-#     path        => 'lists/subscriptions',
-#     method      => 'GET',
-#     params      => [qw/user_id screen_name count cursor/],
-#     required    => [],
-#     returns     => 'ArrayRef[List]',
-#     aliases     => [],
-#     description => <<'',
-# Obtain a collection of the lists the specified user is subscribed to, 20 lists
-# per page by default. Does not include the user's own lists.
-
-# );
-
-# ### Legal ###
-
-# twitter_api_method get_privacy_policy => (
-#     path        => 'legal/privacy',
-#     method      => 'GET',
-#     params      => [],
-#     required    => [],
-#     returns     => 'HashRef',
-#     description => <<'',
-# Returns Twitter's privacy policy.
-
-# );
-
-# twitter_api_method get_tos => (
-#     path        => 'legal/tos',
-#     method      => 'GET',
-#     params      => [],
-#     required    => [],
-#     returns     => 'HashRef',
-#     description => <<'',
-# Returns the Twitter Terms of Service. These are not the same as the Developer
-# Rules of the Road.
-
-# );
 
 1;
 
