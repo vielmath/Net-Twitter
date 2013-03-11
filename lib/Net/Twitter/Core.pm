@@ -4,7 +4,6 @@ use Moose;
 use MooseX::Aliases;
 use Carp;
 use JSON;
-use URI::Escape;
 use HTTP::Request::Common;
 use Net::Twitter::Error;
 use Scalar::Util qw/blessed reftype/;
@@ -14,7 +13,7 @@ use Encode qw/encode_utf8/;
 use DateTime;
 use Data::Visitor::Callback;
 use Try::Tiny;
-
+use Net::OAuth::Message;
 use namespace::autoclean;
 
 # use *all* digits for fBSD ports
@@ -146,18 +145,31 @@ sub _json_request {
     return $self->_parse_result($res, $args, $dt_parser);
 }
 
+# Make sure we encode arguments *exactly* the same way Net::OAuth does
+# ...by letting Net::OAuth encode them.
+sub _query_string_for {
+    my ( $self, $args ) = @_;
+
+    my @pairs;
+    while ( my ($k, $v) = each %$args ) {
+        push @pairs, join '=', map Net::OAuth::Message::encode($_), $k, $v;
+    }
+
+    return join '&', @pairs;
+}
+
 sub _prepare_request {
-    my ($self, $http_method, $uri, $args, $authenticate, $uriencode) = @_;
+    my ($self, $http_method, $uri, $args, $authenticate) = @_;
     my $msg;
 
     my %natural_args = $self->_natural_args($args);
-    %natural_args = map { $_ => uri_escape($args->{$_}) } keys %natural_args
-        if $uriencode;
     %natural_args = $self->_encode_args(\%natural_args);
 
     if ( $http_method =~ /^(?:GET|DELETE)$/ ) {
-        $uri->query_form(%natural_args);
+        #$uri->query_form(%natural_args);
+        $uri->query($self->_query_string_for(\%natural_args));
         $msg = HTTP::Request->new($http_method, $uri);
+
     }
     elsif ( $http_method eq 'POST' ) {
         # if any of the arguments are (array) refs, use form-data
@@ -166,7 +178,8 @@ sub _prepare_request {
                     Content_Type => 'form-data',
                     Content      => \%natural_args,
                )
-             : POST($uri, \%natural_args)
+             #: POST($uri, \%natural_args)
+             : POST($uri, Content => $self->_query_string_for(\%natural_args))
              ;
     }
     else {
