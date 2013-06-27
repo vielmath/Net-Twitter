@@ -903,6 +903,7 @@ according to a given user's preferences. You must be properly
 authenticated to request the page of a protected user.
 
     path     => 'users/show',
+    resource => 'users/show/:id',
     method   => 'GET',
     params   => [qw/user_id screen_name include_entities/],
     booleans => [qw/include_entities/],

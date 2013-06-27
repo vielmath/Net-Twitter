@@ -64,7 +64,6 @@ sub rate_reset {
     my $res  = shift;
     my $rate = $self->_rate_limit($res);
     $self->rate_limit_status if !$self->_rate_limit_status or !$rate or $rate->{reset} < time;
-
     $self->_rate_limit($res)->{reset}
 }
 
