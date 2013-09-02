@@ -34,7 +34,9 @@ around _json_request => sub {
     my ($self, $http_method, $uri, $args, $authenticate, $dt_parser, $dblenc, $resource) = @_;
     $resource ||= $self->_uri_to_resource($uri);
     die "cannot call $resource, rate limited" 
-        if $resource ne 'application/rate_limit_status' && !$self->_check_rate($resource);
+        if $resource ne 'application/rate_limit_status' 
+            && $resource ne 'none' 
+            && !$self->_check_rate($resource);
 
     my $r = $self->$orig($http_method, $uri, $args, $authenticate, $dt_parser, $dblenc, $resource)
 };
@@ -89,7 +91,7 @@ sub rate_ratio {
     my $self = shift;
     my $rate = $self->rate_limit(shift);
 
-    my $full_rate = $rate->{limit} / 15*60;
+    my $full_rate = $rate->{limit} / (15*60);
     my $current_rate = try { $rate->{remaining} / ($rate->{reset} - time) } || 0;
     return $current_rate / $full_rate;
 }

@@ -133,6 +133,7 @@ twitter_api_method update => (
     required   => [qw/status/],
     booleans   => [qw/display_coordinates trim_user/],
     add_source => 1,
+    resource   => 'none',
     returns    => 'Status',
     description => <<'EOT',
 
@@ -202,6 +203,7 @@ Retweets a tweet.
 
 twitter_api_method update_with_media => (
     path        => 'statuses/update_with_media',
+    resource    => 'none',
     method      => 'POST',
     params      => [qw/
         status media[] possibly_sensitive in_reply_to_status_id lat long place_id display_coordinates
