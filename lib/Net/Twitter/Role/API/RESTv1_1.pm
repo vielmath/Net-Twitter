@@ -197,6 +197,7 @@ Retweets a tweet.
     method    => 'POST',
     params    => [qw/idtrim_user/],
     booleans  => [qw/trim_user/],
+    resource  => 'none',
     required  => [qw/id/],
     returns   => 'Status',
 );
