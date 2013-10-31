@@ -155,7 +155,6 @@ sub _prepare_request {
 
     my %natural_args = $self->_natural_args($args);
     $self->_encode_args(\%natural_args);
-
     if ( $http_method =~ /^(?:GET|DELETE)$/ ) {
         $uri->query($self->_query_string_for(\%natural_args,$dblenc));
         $msg = HTTP::Request->new($http_method, $uri);
@@ -163,19 +162,25 @@ sub _prepare_request {
     elsif ( $http_method eq 'POST' ) {
         # if any of the arguments are (array) refs, use form-data
         $msg = (first { ref } values %natural_args)
-             ? POST($uri,
+             ?  POST($uri,
                     Content_Type => 'form-data',
-                    Content      => \%natural_args,
+                    Content      => $self->_form_data_payload(\%natural_args),
                )
-             : POST($uri, Content => $self->_query_string_for(\%natural_args))
-             ;
+             : POST($uri, Content => $self->_query_string_for(\%natural_args));
     }
     else {
         croak "unexpected HTTP method: $http_method";
     }
-
     $self->_add_authorization_header($msg, \%natural_args) if $authenticate;
     return $msg;
+}
+
+sub _form_data_payload {
+    my ($self, $args) = @_;
+    +{map{ $_=> ref $args->{$_} 
+           ? $args->{$_} 
+           : encode_utf8($args->{$_})
+      }keys %$args}
 }
 
 # Make sure we encode arguments *exactly* the same way Net::OAuth does
