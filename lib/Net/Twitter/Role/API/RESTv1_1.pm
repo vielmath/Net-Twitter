@@ -897,6 +897,22 @@ EOT
     returns => 'ArrayRef[User]',
 );
 
+twitter_api_method lookup_statuses => (
+    description => <<'EOT',
+
+Returns fully-hydrated tweet objects for up to 100 tweets per request, as specified by comma-separated values passed to the id parameter.
+This method is especially useful to get the details (hydrate) a collection of Tweet IDs.
+GET statuses/show/:id is used to retrieve a single tweet object.
+EOT
+
+    path => 'statuses/lookup',
+    method => 'GET',
+    params => [qw/id include_entities trim_user map/],
+    booleans => [qw/include_entities trim_use map/],
+    required => [qw/id
+/],
+    returns => 'ArrayRef[Status]',
+);
 twitter_api_method show_user => (
     description => <<'',
 Returns extended information of a given user, specified by ID or screen
